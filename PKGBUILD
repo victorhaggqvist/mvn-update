@@ -1,5 +1,4 @@
-# Maintainer: Florian Bruhin (The Compiler) <archlinux.org@the-compiler.org>
-# Adapted for dp1 version by Semyon Maryasin <simeon@maryasin.name>
+# Maintainer: Victor Häggqvist <victor@snilius.com>
 # vim: ft=sh
 
 pkgname=mvn-update
