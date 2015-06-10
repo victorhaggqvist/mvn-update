@@ -10,7 +10,7 @@ arch=('any')
 license=('MIT')
 depends=('python-lxml' 'python-requests' 'python-semantic-version' 'python-argparse')
 source=('mvn-update.py')
-sha512sums=('ca78c2f8a227cfbb1a9642b6980fd2afb82b04f213c4f55d7f2a11dca2821ca2b3b8f3feea172ac31c91b28d5eba631213737dccd44a80fb4704ba9d2563cb5d')
+sha512sums=('1bcc89a569d799dcb0a4b4eb201ce8b1d8c228df319f02691665cda0e3cf10fed6bbbd9abf8492088de025e616bf76d94842d60320c95a4f8b0921ac9de9891e')
 
 package() {
   install -dm755 "$pkgdir/opt/mvn-update"

@@ -127,8 +127,7 @@ def main():
 
     gradlefile = os.path.expanduser(args.file)
     if os.path.abspath(gradlefile):
-        pwd = os.path.dirname(os.path.realpath(__file__))
-        gradlefile = os.path.join(pwd, gradlefile)
+        gradlefile = os.path.join(os.getcwd(), gradlefile)
 
     artifacts = parse_artifacts(gradlefile)
 
