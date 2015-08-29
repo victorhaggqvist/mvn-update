@@ -80,7 +80,7 @@ def parse_artifacts(gradlefile: str) -> list:
     :param gradlefile:
     :return list of artifacts:
     """
-    pattern = re.compile(r"compile\s'([a-z-0-9.]{1,}):([a-z-0-9.]{1,}):([0-9.]{1,})([@aar]*)'")
+    pattern = re.compile(r"compile\s'([a-z-0-9.]{1,}):([a-z-0-9.]{1,}):([0-9.\-a-z]{1,})([@aar]*)'")
 
     print('Processing %s' % gradlefile)
     deps = []
