@@ -117,8 +117,8 @@ def rewrite(gradlefile: str, new_versions: list):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Maven Update v'+__version__, usage='mvn-update -u -f build.gradle')
-    parser.add_argument('-f', '--file', help='gradle.build file', required=True)
+    parser = argparse.ArgumentParser(description='Maven Update v'+__version__)
+    parser.add_argument('file', help='gradle.build file')
     parser.add_argument('-u', '--update', help='Actually update the gradle.build file', action='store_true')
 
     args = parser.parse_args()
