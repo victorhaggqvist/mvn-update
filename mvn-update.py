@@ -120,6 +120,7 @@ def main():
     parser = argparse.ArgumentParser(description='Maven Update v'+__version__)
     parser.add_argument('file', help='gradle.build file')
     parser.add_argument('-u', '--update', help='Actually update the gradle.build file', action='store_true')
+    parser.add_argument('--prerelease', help='Update to prerelease versions', action='store_true')
 
     args = parser.parse_args()
 
@@ -141,7 +142,11 @@ def main():
     for check in new_versions:
         meta = check.metadata
         try:
-            if semantic_version.compare(meta.version, check.version) < 0:
+            cv = semantic_version.Version(check.version)
+            is_prerelease = len(cv.prerelease) > 0
+            update_prerelease = args.prerelease and is_prerelease
+
+            if semantic_version.compare(meta.version, check.version) < 0 and update_prerelease:
                 print('%s:%s %s->%s' % (meta.group, meta.artifact, meta.version, check.version))
             else:
                 print('%s:%s %s current' % (meta.group, meta.artifact, meta.version))
