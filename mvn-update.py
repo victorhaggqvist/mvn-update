@@ -147,7 +147,7 @@ def main():
             update_prerelease = args.prerelease and is_prerelease
 
             if semantic_version.compare(meta.version, check.version) < 0 and update_prerelease:
-                print('%s:%s %s->%s' % (meta.group, meta.artifact, meta.version, check.version))
+                print('%s:%s %s -> %s' % (meta.group, meta.artifact, meta.version, check.version))
             else:
                 print('%s:%s %s current' % (meta.group, meta.artifact, meta.version))
         except ValueError as e:
