@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # coding=utf-8
 import os
 import requests
@@ -10,7 +10,7 @@ from collections import namedtuple
 import logging
 
 __author__ = 'Victor Häggqvist'
-__version__ = '0.1.1'
+__version__ = '0.2.1'
 
 MetaData = namedtuple('MetaData', ['group', 'artifact', 'version', 'aar'])
 VersionCheck = namedtuple('VersionCheck', ['version', 'metadata'])
