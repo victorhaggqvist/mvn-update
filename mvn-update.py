@@ -120,6 +120,7 @@ def main():
     parser = argparse.ArgumentParser(description='Maven Update v'+__version__)
     parser.add_argument('file', help='gradle.build file')
     parser.add_argument('-u', '--update', help='Actually update the gradle.build file', action='store_true')
+    parser.add_argument('-p', '--prerelease', help='Update to prerelease versions', action='store_true')
 
     args = parser.parse_args()
 
@@ -138,19 +139,40 @@ def main():
             new_versions.append(VersionCheck(latest_version, art))
     log.debug(new_versions)
 
+    # do the checking to find out what to update
+    actual_updates = []
     for check in new_versions:
         meta = check.metadata
         try:
-            if semantic_version.compare(meta.version, check.version) < 0:
-                print('%s:%s %s->%s' % (meta.group, meta.artifact, meta.version, check.version))
+            sem_version = semantic_version.Version(check.version)
+            is_prerelease = len(sem_version.prerelease) > 0
+
+            if args.prerelease:
+                if semantic_version.compare(meta.version, check.version) < 0:
+                    actual_updates.append(check)
             else:
-                print('%s:%s %s current' % (meta.group, meta.artifact, meta.version))
+                if not is_prerelease and semantic_version.compare(meta.version, check.version) < 0:
+                    actual_updates.append(check)
+
         except ValueError as e:
             print('%s for %s' % (e, meta))
 
+    # print update status
+    for check in actual_updates:
+        meta = check.metadata
+        try:
+            if semantic_version.compare(meta.version, check.version) < 0:
+                print('%s:%s %s -> %s' % (meta.group, meta.artifact, meta.version, check.version))
+            else:
+                print('%s:%s %s current' % (meta.group, meta.artifact, meta.version))
+
+        except ValueError as e:
+            print('%s for %s' % (e, meta))
+
+    # actualy rewrite the file, if one want
     if args.update:
         print("Rewriting build.gradle with updates..")
-        rewrite(gradlefile, new_versions)
+        rewrite(gradlefile, actual_updates)
 
 
 if __name__ == '__main__':
