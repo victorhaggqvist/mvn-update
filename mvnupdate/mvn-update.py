@@ -10,7 +10,7 @@ from collections import namedtuple
 import logging
 
 __author__ = 'Victor Häggqvist'
-__version__ = '0.1.1'
+__version__ = '0.3.0'
 
 MetaData = namedtuple('MetaData', ['group', 'artifact', 'version', 'aar'])
 VersionCheck = namedtuple('VersionCheck', ['version', 'metadata'])
