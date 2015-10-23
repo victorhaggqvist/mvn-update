@@ -18,60 +18,127 @@ VersionCheck = namedtuple('VersionCheck', ['version', 'metadata'])
 log = logging.getLogger('Mvn Update')
 
 
-def search_oss_nexus(artifact: MetaData) -> str:
-    """
-    Query OSS Sonatype Nexus for artifact info
-    :param artifact:
-    :return version str:
-    """
-    headers = {'Accept': 'application/json'}
-    url = 'https://oss.sonatype.org/service/local/artifact/maven/resolve?g=%s&a=%s&v=RELEASE&r=releases' % (artifact.group, artifact.artifact)
-    if len(artifact.aar) > 0:
-        url += '&p=aar'
+def get_versions_oss_nexus(group, artifact):
+    url = 'http://repo1.maven.org/maven2/'+group.replace('.', '/')+'/'+artifact+'/maven-metadata.xml'
 
-    resp = requests.get(url, headers=headers)
+    r = requests.get(url)
 
-    if resp.status_code is not 200:
-        log.debug('%s:%s %s Unexpected response: HTTP STATUS %s' % (artifact.group, artifact.artifact, artifact.version, resp.status_code))
+    if r.status_code is not 200:
+        log.debug('%s:%s Unexpected response: HTTP STATUS %s' % (group, artifact, r.status_code))
         log.debug(url)
         return None
 
-    body = resp.json()
-    return body['data']['version']
-
-
-def search_jcenter_bintray(artifact: MetaData) -> str:
-    """
-    Query JCenter search for artifact info
-    :param artifact:
-    :return:
-    """
-    url = 'http://jcenter.bintray.com/' + artifact.group.replace('.', '/')+'/'+artifact.artifact+'/maven-metadata.xml'
-    resp = requests.get(url)
-
-    if resp.status_code is not 200:
-        log.debug(url)
-        return None
-
-    body = resp.text
+    body = r.text
     body = body.encode('utf8')
 
-    doc = etree.fromstring(body)
-    return doc.find('version').text
+    return get_versions_from_maven_metadata(body)
 
 
-def find_latest_version(artifact: MetaData) -> str:
+def get_versions_jcenter_bintray(group: str, artifact: str) -> list:
+    url = 'http://jcenter.bintray.com/' + group.replace('.', '/')+'/'+artifact+'/maven-metadata.xml'
+    r = requests.get(url)
+
+    if r.status_code is not 200:
+        log.debug('%s:%s Unexpected response: HTTP STATUS %s' % (group, artifact, r.status_code))
+        log.debug(url)
+        return None
+
+    body = r.text
+    body = body.encode('utf8')
+
+    return get_versions_from_maven_metadata(body)
+
+
+def get_versions_from_maven_metadata(metadata: str) -> list:
     """
-    Check repos for version
+    Returns the versions list from the contents of maven-metadata.xml
+    :param metadata:
+    :return: version list
+    """
+    doc = etree.fromstring(metadata)
+    meta_versions = doc.find('versioning').find('versions').getchildren()
+
+    versions = []
+    for m in meta_versions:
+        versions.append(m.text)
+
+    return versions
+
+
+def fix_semver(version: str) -> str:
+    """
+    Add patch version were absent
+    :param version:
+    :return:
+    """
+    if version.count('.') is 1:
+        return version + '.0'
+    return version
+
+
+def get_latest_non_prerelease(versions: list) -> str:
+    """
+    Returns latest stable version
+    :param versions: List of version strings stored ASC
+    :return: stable version
+    """
+    versions.reverse()
+    for v in versions:
+        comp_ver = fix_semver(v)
+        sem_version = semantic_version.Version(comp_ver)
+        is_prerelease = len(sem_version.prerelease) > 0
+
+        if not is_prerelease:
+            return v
+
+    return None
+
+
+def find_oss_nexus(artifact: MetaData, get_prerelease: bool) -> str:
+    """
+    Query OSS Nexus for latest release of artifact
+    If get_prerelease is false and there is no stable this will return None
+    :param artifact:
+    :param get_prerelease:
+    :return:
+    """
+    versions = get_versions_oss_nexus(artifact.group, artifact.artifact)
+    # pprint(versions)
+
+    if versions is None:
+        return None
+
+    if get_prerelease:
+        return versions[-1]
+    else:
+        return get_latest_non_prerelease(versions)
+
+
+def find_jcenter_bintray(artifact: MetaData, get_prerelease: bool) -> str:
+    versions = get_versions_jcenter_bintray(artifact.group, artifact.artifact)
+
+    if versions is None:
+        return None
+
+    if get_prerelease:
+        return versions[-1]
+    else:
+        return get_latest_non_prerelease(versions)
+
+
+def find_latest_version(artifact: MetaData, get_prerelease: bool) -> str:
+    """
+    Check repos for version latest version of artifact
     :param artifact:
     :return:
     """
-    verison = search_oss_nexus(artifact)
 
-    if not verison:
-        verison = search_jcenter_bintray(artifact)
+    version = find_oss_nexus(artifact, get_prerelease)
 
-    return verison
+    if not version:
+        version = find_jcenter_bintray(artifact, get_prerelease)
+
+    return version
 
 
 def parse_artifacts(gradlefile: str) -> list:
@@ -135,30 +202,11 @@ def main():
     new_versions = []
     for art in artifacts:
         if 'com.android.support' not in art.group and 'com.google.android.gms' not in art.group:
-            latest_version = find_latest_version(art)
+            latest_version = find_latest_version(art, args.prerelease)
             new_versions.append(VersionCheck(latest_version, art))
     log.debug(new_versions)
 
-    # do the checking to find out what to update
-    actual_updates = []
     for check in new_versions:
-        meta = check.metadata
-        try:
-            sem_version = semantic_version.Version(check.version)
-            is_prerelease = len(sem_version.prerelease) > 0
-
-            if args.prerelease:
-                if semantic_version.compare(meta.version, check.version) < 0:
-                    actual_updates.append(check)
-            else:
-                if not is_prerelease and semantic_version.compare(meta.version, check.version) < 0:
-                    actual_updates.append(check)
-
-        except ValueError as e:
-            print('%s for %s' % (e, meta))
-
-    # print update status
-    for check in actual_updates:
         meta = check.metadata
         try:
             if semantic_version.compare(meta.version, check.version) < 0:
@@ -169,10 +217,10 @@ def main():
         except ValueError as e:
             print('%s for %s' % (e, meta))
 
-    # actualy rewrite the file, if one want
+    # actually rewrite the file, if one want
     if args.update:
         print("Rewriting build.gradle with updates..")
-        rewrite(gradlefile, actual_updates)
+        rewrite(gradlefile, new_versions)
 
 
 if __name__ == '__main__':
